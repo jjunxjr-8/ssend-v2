@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full w-full dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ScottFree AAC - Assistive Communication Receiver</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#10b981',
+                            600: '#059669',
+                            900: '#064e3b',
+                            accent: '#6366f1',
+                            neon: '#00ffcc'
+                        }
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 2s infinite',
+                        'radar-sweep': 'radarSweep 4s linear infinite',
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%, 100%': { boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' },
+                            '50%': { boxShadow: '0 0 30px rgba(16, 185, 129, 0.8)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphic Cards */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card-hover:hover {
+            border-color: rgba(16, 185, 129, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 255, 204, 0.1);
+        }
+
+        /* Interactive Keypad Button */
+        .interactive-btn {
+            position: relative;
+            background: #0f172a;
+            border: 2px solid #1e293b;
+            transition: all 0.08s ease;
+        }
+        .interactive-btn:active, .interactive-btn.drag-hover {
+            background-color: #4f46e5 !important;
+            border-color: #a5b4fc !important;
+            transform: scale(0.96);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+        }
+        .interactive-btn.active-click {
+            background-color: #059669 !important;
+            border-color: #6ee7b7 !important;
+            transform: scale(0.94);
+        }
+
+        /* Glowing Text Effects */
+        .neon-text-emerald {
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.6), 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        .neon-text-cyan {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.6), 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #030712;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+
+        /* Blinking Cursor */
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Vertical text support */
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-emerald-500 selection:text-black">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Logo & Brand Info -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-indigo-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-waveform"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-extrabold text-lg sm:text-xl tracking-tight text-white flex items-center gap-2">
+                            ScottFree <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono">AAC Receiver</span>
+                        </h1>
+                    </div>
+                    <p class="text-xs text-slate-400 font-medium">Assistive AAC Signal & Intelligence Hub</p>
+                </div>
+            </div>
+
+            <!-- Action Controls & Status Bar -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Receiver Active Badge -->
+                <div id="connectionStatus" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-800 text-emerald-400 text-xs font-mono">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>SIGNAL ONLINE</span>
+                </div>
+
+                <!-- Matrix Keypad Simulator Toggle Button -->
+                <button id="toggleKeypadBtn" class="px-3.5 py-2 rounded-xl bg-indigo-900/40 hover:bg-indigo-800/60 border border-indigo-700/60 text-indigo-300 hover:text-white text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all shadow-sm">
+                    <i class="fa-solid fa-keyboard text-emerald-400"></i>
+                    <span class="hidden md:inline">Keypad Simulator</span>
+                </button>
+
+                <!-- Fullscreen AAC Board Button -->
+                <button id="btnFullScreen" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-expand text-slate-400"></i>
+                    <span class="hidden md:inline">Board Mode</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APPLICATION CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Primary Receiver Display & AI Analysis (8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- PRIMARY QUERY RECEIVER CARD -->
+            <div class="glass-card rounded-3xl p-5 sm:p-7 border-2 border-slate-800 relative overflow-hidden shadow-2xl">
+                <!-- Subtle Radial Glow Background -->
+                <div class="absolute -top-24 -right-24 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <!-- Header Metadata Row -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-5 gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-400 shadow-lg shadow-emerald-500/50"></span>
+                        <span class="text-xs font-mono font-bold tracking-wider text-slate-400 uppercase">Incoming Communication Query</span>
+                    </div>
+
+                    <!-- Category Intent Tag -->
+                    <div id="categoryBadge" class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-mono font-bold border border-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-satellite"></i>
+                        <span id="categoryLabel">Awaiting Input...</span>
+                    </div>
+                </div>
+
+                <!-- MAIN RAW TEXT DISPLAY BOX -->
+                <div class="bg-slate-950 border-2 border-emerald-500/30 rounded-2xl p-5 sm:p-7 mb-5 shadow-inner relative min-h-[140px] flex flex-col justify-between">
+                    
+                    <div class="flex items-baseline gap-2 overflow-x-auto min-h-[60px] scrollbar-none">
+                        <span id="receivedText" class="font-mono text-3xl sm:text-5xl font-black text-emerald-400 tracking-wider break-words neon-text-emerald">
+                            NO QUERY
+                        </span>
+                        <span class="w-3.5 h-8 sm:h-11 bg-emerald-400 inline-block rounded-sm cursor-blink flex-none"></span>
+                    </div>
+
+                    <!-- Metrics bar -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-900 mt-4 text-xs font-mono text-slate-500">
+                        <div class="flex items-center gap-4">
+                            <span>CHARS: <strong id="charCount" class="text-slate-300">0</strong></span>
+                            <span>WORDS: <strong id="wordCount" class="text-slate-300">0</strong></span>
+                            <span>TIME: <strong id="timeReceived" class="text-slate-300">--:--</strong></span>
+                        </div>
+                        <div class="flex items-center gap-2 text-indigo-400">
+                            <i class="fa-solid fa-link text-xs"></i>
+                            <span id="sourceOrigin" class="truncate max-w-[200px]">URL Parameter (?q=)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AUDIO & QUICK ACTION BUTTON TOOLBAR -->
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    
+                    <!-- Primary Audio Speech Controls -->
+                    <div class="flex items-center gap-2">
+                        <button id="btnPlaySpeech" class="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all active:scale-95">
+                            <i class="fa-solid fa-volume-high text-base"></i>
+                            <span>SPEAK QUERY</span>
+                        </button>
+
+                        <button id="btnPauseSpeech" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all" title="Pause Speech">
+                            <i class="fa-solid fa-pause"></i>
+                        </button>
+
+                        <button id="btnReplaySpeech" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all" title="Replay Speech">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </div>
+
+                    <!-- Audio Equalizer Canvas Visualizer -->
+                    <div class="hidden sm:flex items-center bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl gap-2">
+                        <canvas id="audioVisualizer" width="80" height="24" class="rounded"></canvas>
+                        <span id="speechStateText" class="text-[11px] font-mono text-slate-400">AUDIO READY</span>
+                    </div>
+
+                    <!-- Quick Utility Action Buttons -->
+                    <div class="flex items-center gap-2">
+                        <button id="btnCopyQuery" class="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all" title="Copy Raw Text">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+
+                        <button id="btnAnalyzeAI" class="px-4 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all active:scale-95">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>AI EXPAND</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI SMART PHRASE EXPANSION & ACTION SUGGESTIONS CARD -->
+            <div class="glass-card rounded-3xl p-5 sm:p-7 border border-slate-800 relative overflow-hidden shadow-xl">
+                
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-base text-white">Gemini AI AAC Interpreter</h3>
+                            <p class="text-xs text-slate-400">Telegraphic phrase expansion & caregiver quick responses</p>
+                        </div>
+                    </div>
+                    <span id="aiStatusBadge" class="text-[11px] font-mono px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 border border-slate-700">
+                        STANDBY
+                    </span>
+                </div>
+
+                <!-- Natural Language Expanded Phrase Box -->
+                <div class="mb-5">
+                    <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">Natural Expanded Sentence</label>
+                    <div class="p-4 rounded-2xl bg-slate-900/90 border border-indigo-900/50 text-indigo-100 font-medium text-lg sm:text-xl leading-relaxed relative group min-h-[70px] flex items-center">
+                        <p id="expandedSentenceText" class="text-slate-400 italic">
+                            Click "AI Expand" or send a query to generate polite natural language expansions...
+                        </p>
+                        <button id="btnSpeakExpanded" class="absolute right-3 top-3 p-2 rounded-xl bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800 opacity-90 hover:opacity-100 transition-opacity" title="Speak Expanded Sentence">
+                            <i class="fa-solid fa-volume-high text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Caregiver Quick Response Chips -->
+                <div>
+                    <label class="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">Suggested Quick Responses</label>
+                    <div id="quickResponsesContainer" class="flex flex-wrap gap-2 min-h-[44px]">
+                        <span class="text-xs text-slate-500 font-mono italic">Suggested reply options will appear here...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUERY HISTORY & MESSAGE LOG CARD -->
+            <div class="glass-card rounded-3xl p-5 sm:p-7 border border-slate-800 shadow-xl">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800 mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-clock-rotate-left text-slate-400 text-lg"></i>
+                        <h3 class="font-bold text-base text-white">Communication Log History</h3>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <!-- Category Filter Dropdown -->
+                        <select id="historyFilterSelect" class="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                            <option value="ALL">All Categories</option>
+                            <option value="EMERGENCY">Emergency</option>
+                            <option value="NEED">Basic Need</option>
+                            <option value="GREETING">Greeting</option>
+                            <option value="QUESTION">Question</option>
+                            <option value="ACTION">Action Request</option>
+                        </select>
+
+                        <button id="btnClearHistory" class="px-3 py-1.5 rounded-xl bg-red-950/50 hover:bg-red-900/60 border border-red-800 text-red-400 text-xs font-semibold transition-all">
+                            Clear Log
+                        </button>
+                    </div>
+                </div>
+
+                <!-- History Items List -->
+                <div id="historyList" class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    <div class="text-center py-8 text-slate-500 font-mono text-xs">
+                        No communication history recorded yet.
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: Keypad Simulator & Settings Panel (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+
+            <!-- MANUAL QUERY SIMULATOR CARD -->
+            <div class="glass-card rounded-3xl p-5 border border-slate-800 shadow-xl">
+                <h3 class="font-bold text-sm text-white mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-link text-indigo-400"></i>
+                    <span>Live URL Parameter Tester</span>
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">Simulate sending a query parameter (<code class="text-emerald-400 font-mono">?q=TEXT</code>) directly:</p>
+                
+                <form id="urlSimForm" class="flex flex-col gap-2">
+                    <div class="relative">
+                        <input type="text" id="simQueryInput" placeholder="Type query e.g. NEED HELP..." 
+                               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 pr-10 uppercase">
+                        <button type="submit" class="absolute right-2 top-2 px-3 py-1 rounded-lg bg-emerald-600 text-slate-950 text-xs font-bold hover:bg-emerald-500">
+                            GO
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 5x5 MATRIX KEYPAD SIMULATOR EMBEDDED BOARD -->
+            <div id="keypadSimulatorCard" class="glass-card rounded-3xl p-4 sm:p-5 border-2 border-indigo-900/60 shadow-2xl flex flex-col gap-3">
+                
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-grid-2 text-indigo-400"></i>
+                        <span class="font-bold text-sm text-white">5x5 Matrix Keypad Simulator</span>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">
+                        SENDER SIMULATOR
+                    </span>
+                </div>
+
+                <!-- Mini Keypad Screen Output -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                    <span id="keypadScreen" class="font-mono text-xl font-bold text-emerald-400 truncate"></span>
+                    <div class="flex items-center gap-1">
+                        <button id="simBtnDel" class="px-2 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded text-xs font-mono font-bold">DEL</button>
+                        <button id="simBtnClr" class="px-2 py-1 bg-red-950 text-red-400 border border-red-800 rounded text-xs font-mono font-bold">CLR</button>
+                        <button id="simBtnSend" class="px-2.5 py-1 bg-emerald-600 text-slate-950 rounded text-xs font-mono font-black hover:bg-emerald-500">SEND</button>
+                    </div>
+                </div>
+
+                <!-- Center Grid + Edge Space Buttons -->
+                <div class="flex gap-1.5 h-[280px]">
+                    
+                    <!-- Left Space Edge -->
+                    <button class="interactive-btn sim-key w-8 h-full rounded-xl bg-indigo-950/40 border-indigo-800/80 flex flex-col items-center justify-center text-indigo-300 font-black text-xs" data-char=" ">
+                        <span class="vertical-text rotate-180">SPACE</span>
+                    </button>
+
+                    <!-- 5x5 Matrix Grid -->
+                    <div class="flex-1 grid grid-cols-5 grid-rows-5 gap-1.5">
+                        <!-- Row 1 -->
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="A">A</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="B">B</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="C">C</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="D">D</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="E">E</button>
+
+                        <!-- Row 2 -->
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="F">F</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="G">G</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="H">H</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="I">I</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="J">J</button>
+
+                        <!-- Row 3 -->
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="L">L</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="M">M</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="N">N</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="O">O</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="P">P</button>
+
+                        <!-- Row 4 -->
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="Q">Q</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="R">R</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="S">S</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="T">T</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="U">U</button>
+
+                        <!-- Row 5 -->
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="V">V</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="W">W</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="X">X</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="Y">Y</button>
+                        <button class="interactive-btn sim-key rounded-xl flex items-center justify-center font-black text-lg text-slate-100" data-char="Z">Z</button>
+                    </div>
+
+                    <!-- Right Space Edge -->
+                    <button class="interactive-btn sim-key w-8 h-full rounded-xl bg-indigo-950/40 border-indigo-800/80 flex flex-col items-center justify-center text-indigo-300 font-black text-xs" data-char=" ">
+                        <span class="vertical-text">SPACE</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SPEECH ENGINE & ACCESSIBILITY CONTROLS CARD -->
+            <div class="glass-card rounded-3xl p-5 border border-slate-800 shadow-xl flex flex-col gap-4">
+                <h3 class="font-bold text-sm text-white flex items-center gap-2 pb-2 border-b border-slate-800">
+                    <i class="fa-solid fa-sliders text-emerald-400"></i>
+                    <span>Audio & Voice Engine Settings</span>
+                </h3>
+
+                <!-- Speech Voice Selector -->
+                <div>
+                    <label class="block text-xs font-mono text-slate-400 mb-1">TTS Synthesizer Voice</label>
+                    <select id="voiceSelect" class="w-full bg-slate-950 border border-slate-700 text-slate-200 text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500">
+                        <option value="">Loading system speech voices...</option>
+                    </select>
+                </div>
+
+                <!-- Speed / Pitch Sliders -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                            <span>Speech Rate</span>
+                            <span id="rateVal">1.1x</span>
+                        </div>
+                        <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1.1" class="w-full accent-emerald-400">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-mono text-slate-400 mb-1">
+                            <span>Pitch</span>
+                            <span id="pitchVal">1.0</span>
+                        </div>
+                        <input type="range" id="pitchSlider" min="0.5" max="1.5" step="0.1" value="1.0" class="w-full accent-indigo-400">
+                    </div>
+                </div>
+
+                <!-- Auto-Play Toggle Switch -->
+                <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+                    <div>
+                        <span class="text-xs font-semibold text-slate-200 block">Auto-Pronounce Query</span>
+                        <span class="text-[11px] text-slate-400 block">Speak immediately on receiving new ?q= parameter</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="autoPlayToggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    </label>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FULL-SCREEN BOARD MODE OVERLAY -->
+    <div id="fullScreenBoard" class="fixed inset-0 bg-slate-950 z-50 hidden flex-col justify-between p-6 sm:p-12">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="w-4 h-4 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="font-mono text-sm tracking-widest text-emerald-400 font-bold uppercase">SCOTTFREE AAC BOARD DISPLAY</span>
+            </div>
+            <button id="btnCloseBoard" class="px-5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm border border-slate-700">
+                <i class="fa-solid fa-xmark mr-2"></i> Exit Board Mode
+            </button>
+        </div>
+
+        <div class="flex-1 flex flex-col items-center justify-center text-center my-auto px-4">
+            <span id="boardCategory" class="px-4 py-1.5 rounded-full bg-indigo-950 text-indigo-300 font-mono text-sm border border-indigo-800 mb-6 font-bold uppercase">
+                COMMUNICATION QUERY
+            </span>
+            <div id="boardText" class="font-mono text-5xl sm:text-7xl md:text-8xl font-black text-emerald-400 tracking-wider break-words max-w-6xl leading-tight neon-text-emerald">
+                --
+            </div>
+            <p id="boardExpanded" class="mt-8 text-xl sm:text-3xl text-slate-300 font-medium max-w-4xl italic">
+                --
+            </p>
+        </div>
+
+        <div class="flex items-center justify-center gap-4">
+            <button id="boardSpeakBtn" class="px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xl shadow-2xl flex items-center gap-3">
+                <i class="fa-solid fa-volume-high"></i>
+                <span>SPEAK OUT LOUD</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // Application State
+        let currentQuery = "";
+        let currentExpanded = "";
+        let currentCategory = "UNKNOWN";
+        let speechSynth = window.speechSynthesis;
+        let voices = [];
+        let historyLog = [];
+        let audioVisualizerInterval = null;
+
+        // Gemini API Config (Runtime handles key injection if provided, or defaults to standard model)
+        const GEMINI_MODEL = "gemini-3-flash-preview";
+        const GEMINI_API_KEY = ""; // Kept blank as mandated for runtime provision
+
+        // DOM Element Cache
+        const receivedTextEl = document.getElementById('receivedText');
+        const charCountEl = document.getElementById('charCount');
+        const wordCountEl = document.getElementById('wordCount');
+        const timeReceivedEl = document.getElementById('timeReceived');
+        const sourceOriginEl = document.getElementById('sourceOrigin');
+        const categoryBadge = document.getElementById('categoryBadge');
+        const categoryLabel = document.getElementById('categoryLabel');
+        const expandedSentenceText = document.getElementById('expandedSentenceText');
+        const quickResponsesContainer = document.getElementById('quickResponsesContainer');
+        const aiStatusBadge = document.getElementById('aiStatusBadge');
+        const historyList = document.getElementById('historyList');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const rateSlider = document.getElementById('rateSlider');
+        const pitchSlider = document.getElementById('pitchSlider');
+        const rateVal = document.getElementById('rateVal');
+        const pitchVal = document.getElementById('pitchVal');
+        const autoPlayToggle = document.getElementById('autoPlayToggle');
+
+        // Web Audio API Audio FX Helper
+        function playBeep(freq = 600, duration = 0.08) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {
+                // Audio Context fallback silent
+            }
+        }
+
+        // Load System TTS Voices
+        function populateVoices() {
+            if (!speechSynth) return;
+            voices = speechSynth.getVoices();
+            voiceSelect.innerHTML = '';
+            
+            voices.forEach((v, idx) => {
+                const option = document.createElement('option');
+                option.value = idx;
+                option.textContent = `${v.name} (${v.lang})`;
+                if (v.default || v.lang.startsWith('en')) {
+                    option.selected = true;
+                }
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        if (speechSynth) {
+            populateVoices();
+            if (speechSynth.onvoiceschanged !== undefined) {
+                speechSynth.onvoiceschanged = populateVoices;
+            }
+        }
+
+        // Pronounce Text Out Loud
+        function speakText(textToSpeak, cancelPrevious = true) {
+            if (!speechSynth || !textToSpeak) return;
+
+            if (cancelPrevious) {
+                speechSynth.cancel();
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak.toLowerCase());
+            
+            // Apply Voice Settings
+            const selectedIdx = voiceSelect.value;
+            if (voices[selectedIdx]) {
+                utterance.voice = voices[selectedIdx];
+            }
+            utterance.rate = parseFloat(rateSlider.value) || 1.1;
+            utterance.pitch = parseFloat(pitchSlider.value) || 1.0;
+
+            utterance.onstart = () => {
+                document.getElementById('speechStateText').textContent = "SPEAKING...";
+                document.getElementById('speechStateText').classList.add('text-emerald-400');
+                startVisualizerAnimation();
+            };
+
+            utterance.onend = () => {
+                document.getElementById('speechStateText').textContent = "AUDIO READY";
+                document.getElementById('speechStateText').classList.remove('text-emerald-400');
+                stopVisualizerAnimation();
+            };
+
+            speechSynth.speak(utterance);
+        }
+
+        // Canvas Audio Wave Visualizer Simulation
+        function startVisualizerAnimation() {
+            const canvas = document.getElementById('audioVisualizer');
+            const ctx = canvas.getContext('2d');
+            if (audioVisualizerInterval) clearInterval(audioVisualizerInterval);
+
+            audioVisualizerInterval = setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const bars = 8;
+                const barWidth = 6;
+                const gap = 4;
+                for (let i = 0; i < bars; i++) {
+                    const h = Math.random() * (canvas.height - 4) + 4;
+                    ctx.fillStyle = '#10b981';
+                    ctx.fillRect(i * (barWidth + gap) + 4, canvas.height - h, barWidth, h);
+                }
+            }, 80);
+        }
+
+        function stopVisualizerAnimation() {
+            if (audioVisualizerInterval) clearInterval(audioVisualizerInterval);
+            const canvas = document.getElementById('audioVisualizer');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#334155';
+            for (let i = 0; i < 8; i++) {
+                ctx.fillRect(i * 10 + 4, canvas.height - 4, 6, 4);
+            }
+        }
+        stopVisualizerAnimation();
+
+        // Parse incoming ?q= or ?query= from URL
+        function parseQueryFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryParam = urlParams.get('q') || urlParams.get('query');
+
+            if (queryParam) {
+                processIncomingQuery(queryParam.trim());
+            } else {
+                receivedTextEl.textContent = "NO QUERY";
+                charCountEl.textContent = "0";
+                wordCountEl.textContent = "0";
+                timeReceivedEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+
+        // Main function to display and process an incoming AAC message
+        function processIncomingQuery(rawText, source = "URL Parameter (?q=)") {
+            currentQuery = rawText.toUpperCase();
+            
+            // Update UI elements
+            receivedTextEl.textContent = currentQuery;
+            charCountEl.textContent = currentQuery.length;
+            wordCountEl.textContent = currentQuery.trim().split(/\s+/).filter(Boolean).length;
+            timeReceivedEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            sourceOriginEl.textContent = source;
+
+            // Local Smart Categorization Rule Fallback
+            categorizeQuery(currentQuery);
+
+            // Audio Auto Play if enabled
+            if (autoPlayToggle.checked) {
+                speakText(currentQuery);
+            }
+
+            // Save to Local History Log
+            addToHistory(currentQuery, currentCategory);
+
+            // Automatically Trigger Gemini AI Phrase Expansion
+            analyzeWithGeminiAI(currentQuery);
+        }
+
+        // Smart Local Intent Categorizer
+        function categorizeQuery(text) {
+            const t = text.toUpperCase();
+            let cat = "ACTION";
+            let colorClass = "bg-emerald-950 text-emerald-400 border-emerald-800";
+            let icon = "fa-message";
+
+            if (t.includes("HELP") || t.includes("PAIN") || t.includes("FALL") || t.includes("EMERGENCY") || t.includes("HURT")) {
+                cat = "EMERGENCY";
+                colorClass = "bg-red-950 text-red-400 border-red-800 animate-pulse";
+                icon = "fa-triangle-exclamation";
+            } else if (t.includes("WATER") || t.includes("FOOD") || t.includes("RESTROOM") || t.includes("SLEEP") || t.includes("COLD") || t.includes("HOT")) {
+                cat = "NEED";
+                colorClass = "bg-amber-950 text-amber-400 border-amber-800";
+                icon = "fa-hand-holding-droplet";
+            } else if (t.includes("HELLO") || t.includes("HI") || t.includes("BYE") || t.includes("THANKS") || t.includes("WELCOME")) {
+                cat = "GREETING";
+                colorClass = "bg-indigo-950 text-indigo-400 border-indigo-800";
+                icon = "fa-hand-wave";
+            } else if (t.includes("WHERE") || t.includes("WHAT") || t.includes("WHEN") || t.includes("WHY") || t.includes("WHO") || t.includes("HOW")) {
+                cat = "QUESTION";
+                colorClass = "bg-cyan-950 text-cyan-400 border-cyan-800";
+                icon = "fa-circle-question";
+            }
+
+            currentCategory = cat;
+            categoryBadge.className = `px-3 py-1 rounded-full text-xs font-mono font-bold border flex items-center gap-1.5 ${colorClass}`;
+            categoryLabel.innerHTML = `<i class="fa-solid ${icon}"></i> ${cat}`;
+            document.getElementById('boardCategory').textContent = cat;
+        }
+
+        // Call Gemini API to Expand Telegraphic Phrase and Generate Quick Replies
+        async function analyzeWithGeminiAI(queryText) {
+            if (!queryText || queryText === "NO QUERY") return;
+
+            aiStatusBadge.textContent = "AI ANALYZING...";
+            aiStatusBadge.className = "text-[11px] font-mono px-2.5 py-1 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-700 animate-pulse";
+            
+            expandedSentenceText.innerHTML = `<span class="inline-flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> Generating natural speech expansion...</span>`;
+            quickResponsesContainer.innerHTML = `<span class="text-xs text-slate-500 font-mono italic">Thinking...</span>`;
+
+            const systemPrompt = `You are an expert Assistive Augmentative & Alternative Communication (AAC) speech therapist. 
+The user is sending brief telegraphic keypad queries (e.g., "NEED WATER", "HELP PAIN").
+Your task is to:
+1. Expand the query into a natural, polite full spoken sentence.
+2. Provide 3 short caregiver reply options.
+Return your answer ONLY in valid JSON with this format:
+{
+  "expanded": "The natural polite full sentence here",
+  "category": "EMERGENCY" | "NEED" | "GREETING" | "QUESTION" | "ACTION",
+  "caregiverReplies": ["Reply option 1", "Reply option 2", "Reply option 3"]
+}`;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: `Expand this AAC keypad input: "${queryText}"` }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json"
+                }
+            };
+
+            try {
+                // Exponential backoff fetch implementation
+                let response = null;
+                let delay = 1000;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (response.ok) break;
+                    } catch (err) {
+                        if (attempt === 2) throw err;
+                    }
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+
+                if (response && response.ok) {
+                    const result = await response.json();
+                    const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (jsonText) {
+                        const parsed = JSON.parse(jsonText);
+                        currentExpanded = parsed.expanded || queryText;
+                        
+                        expandedSentenceText.textContent = `"${currentExpanded}"`;
+                        document.getElementById('boardExpanded').textContent = `"${currentExpanded}"`;
+
+                        if (parsed.category) {
+                            categorizeQuery(parsed.category);
+                        }
+
+                        // Render Quick Response Buttons
+                        renderQuickResponses(parsed.caregiverReplies || []);
+
+                        aiStatusBadge.textContent = "AI READY";
+                        aiStatusBadge.className = "text-[11px] font-mono px-2.5 py-1 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800";
+                        return;
+                    }
+                }
+                throw new Error("API call fallback");
+            } catch (e) {
+                // Fallback rule engine if API key is not present or network offline
+                fallbackLocalExpansion(queryText);
+            }
+        }
+
+        // Fallback local rule engine
+        function fallbackLocalExpansion(queryText) {
+            let exp = `I am communicating: "${queryText}". Please assist me with this request.`;
+            let replies = ["I understand, I am on it.", "Can you tell me more?", "I will help right now."];
+
+            const q = queryText.toUpperCase();
+            if (q.includes("WATER")) {
+                exp = "Excuse me, I am feeling thirsty and would appreciate a glass of water, please.";
+                replies = ["I will bring you water now.", "Cold water or room temp?", "Here is your water."];
+            } else if (q.includes("HELP")) {
+                exp = "Attention please, I need immediate assistance or care!";
+                replies = ["I am right here!", "What do you need?", "Calling for assistance."];
+            } else if (q.includes("HELLO") || q.includes("HI")) {
+                exp = "Hello everyone! I hope you are having a wonderful day.";
+                replies = ["Hello there!", "Good to see you!", "How are you doing?"];
+            }
+
+            currentExpanded = exp;
+            expandedSentenceText.textContent = `"${exp}"`;
+            document.getElementById('boardExpanded').textContent = `"${exp}"`;
+            renderQuickResponses(replies);
+
+            aiStatusBadge.textContent = "LOCAL ENGINE";
+            aiStatusBadge.className = "text-[11px] font-mono px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700";
+        }
+
+        // Render Quick Reply Chip Buttons
+        function renderQuickResponses(replyList) {
+            quickResponsesContainer.innerHTML = '';
+            replyList.forEach(reply => {
+                const btn = document.createElement('button');
+                btn.className = "px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium flex items-center gap-2 transition-all active:scale-95";
+                btn.innerHTML = `<i class="fa-solid fa-reply text-emerald-400"></i> <span>"${reply}"</span>`;
+                btn.onclick = () => {
+                    playBeep(800, 0.05);
+                    speakText(reply);
+                };
+                quickResponsesContainer.appendChild(btn);
+            });
+        }
+
+        // Manage Local Storage History Log
+        function addToHistory(query, category) {
+            const item = {
+                id: Date.now(),
+                query: query,
+                category: category,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                date: new Date().toLocaleDateString()
+            };
+
+            historyLog.unshift(item);
+            if (historyLog.length > 50) historyLog.pop(); // Keep last 50
+            
+            try {
+                localStorage.setItem('scottfree_aac_history', JSON.stringify(historyLog));
+            } catch (e) {}
+
+            renderHistory();
+        }
+
+        function loadHistory() {
+            try {
+                const saved = localStorage.getItem('scottfree_aac_history');
+                if (saved) {
+                    historyLog = JSON.parse(saved);
+                }
+            } catch (e) {}
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const filter = document.getElementById('historyFilterSelect').value;
+            const filtered = filter === "ALL" ? historyLog : historyLog.filter(h => h.category === filter);
+
+            if (filtered.length === 0) {
+                historyList.innerHTML = `<div class="text-center py-6 text-slate-500 font-mono text-xs">No records found for this category filter.</div>`;
+                return;
+            }
+
+            historyList.innerHTML = '';
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "p-3 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition-all";
+                div.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 flex-none">${item.time}</span>
+                        <div class="truncate">
+                            <span class="font-mono font-bold text-sm text-emerald-400">${item.query}</span>
+                            <span class="text-[10px] font-mono text-slate-500 ml-2">(${item.category})</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-none">
+                        <button class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs" title="Speak Again" onclick="speakText('${item.query.replace(/'/g, "\\'")}')">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
+                `;
+                historyList.appendChild(div);
+            });
+        }
+
+        // Embedded 5x5 Matrix Keypad Simulator Logic
+        let keypadTypedText = "";
+        const keypadScreen = document.getElementById('keypadScreen');
+
+        function updateKeypadScreen() {
+            keypadScreen.textContent = keypadTypedText;
+        }
+
+        document.querySelectorAll('.sim-key').forEach(btn => {
+            btn.addEventListener('click', () => {
+                playBeep(700, 0.05);
+                const char = btn.getAttribute('data-char');
+                keypadTypedText += char;
+                updateKeypadScreen();
+                speakText(char === ' ' ? 'space' : char, true);
+            });
+        });
+
+        document.getElementById('simBtnDel').addEventListener('click', () => {
+            playBeep(400, 0.05);
+            keypadTypedText = keypadTypedText.slice(0, -1);
+            updateKeypadScreen();
+        });
+
+        document.getElementById('simBtnClr').addEventListener('click', () => {
+            playBeep(300, 0.08);
+            keypadTypedText = "";
+            updateKeypadScreen();
+        });
+
+        document.getElementById('simBtnSend').addEventListener('click', () => {
+            if (!keypadTypedText.trim()) return;
+            playBeep(900, 0.1);
+            processIncomingQuery(keypadTypedText.trim(), "Simulated Keypad");
+            keypadTypedText = "";
+            updateKeypadScreen();
+        });
+
+        // Event Listeners Registration
+        document.getElementById('btnPlaySpeech').addEventListener('click', () => {
+            if (currentQuery && currentQuery !== "NO QUERY") {
+                speakText(currentQuery);
+            }
+        });
+
+        document.getElementById('btnPauseSpeech').addEventListener('click', () => {
+            if (speechSynth.speaking) {
+                speechSynth.pause();
+            } else if (speechSynth.paused) {
+                speechSynth.resume();
+            }
+        });
+
+        document.getElementById('btnReplaySpeech').addEventListener('click', () => {
+            if (currentQuery && currentQuery !== "NO QUERY") {
+                speakText(currentQuery);
+            }
+        });
+
+        document.getElementById('btnSpeakExpanded').addEventListener('click', () => {
+            if (currentExpanded) {
+                speakText(currentExpanded);
+            }
+        });
+
+        document.getElementById('btnAnalyzeAI').addEventListener('click', () => {
+            if (currentQuery && currentQuery !== "NO QUERY") {
+                analyzeWithGeminiAI(currentQuery);
+            }
+        });
+
+        document.getElementById('btnCopyQuery').addEventListener('click', () => {
+            if (!currentQuery || currentQuery === "NO QUERY") return;
+            
+            // Clipboard copy with document.execCommand fallback for iframe safety
+            const tempInput = document.createElement('textarea');
+            tempInput.value = currentQuery;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            playBeep(1000, 0.05);
+            alert("Query copied to clipboard!");
+        });
+
+        // Live URL Simulator Form
+        document.getElementById('urlSimForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = document.getElementById('simQueryInput').value.trim();
+            if (val) {
+                // Update address bar live parameter without full page reload
+                const newUrl = `${window.location.pathname}?q=${encodeURIComponent(val)}`;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+                processIncomingQuery(val, "Manual URL Input");
+                document.getElementById('simQueryInput').value = '';
+            }
+        });
+
+        // Board Mode Full Screen Modal
+        const fullScreenBoard = document.getElementById('fullScreenBoard');
+        const boardText = document.getElementById('boardText');
+
+        document.getElementById('btnFullScreen').addEventListener('click', () => {
+            boardText.textContent = currentQuery || "NO QUERY";
+            fullScreenBoard.classList.remove('hidden');
+            fullScreenBoard.classList.add('flex');
+        });
+
+        document.getElementById('btnCloseBoard').addEventListener('click', () => {
+            fullScreenBoard.classList.add('hidden');
+            fullScreenBoard.classList.remove('flex');
+        });
+
+        document.getElementById('boardSpeakBtn').addEventListener('click', () => {
+            if (currentQuery) speakText(currentQuery);
+        });
+
+        // Keypad Visibility Toggle
+        document.getElementById('toggleKeypadBtn').addEventListener('click', () => {
+            const keypadCard = document.getElementById('keypadSimulatorCard');
+            keypadCard.classList.toggle('hidden');
+        });
+
+        // History Filter & Clear
+        document.getElementById('historyFilterSelect').addEventListener('change', renderHistory);
+        document.getElementById('btnClearHistory').addEventListener('click', () => {
+            if (confirm("Are you sure you want to clear the communication history?")) {
+                historyLog = [];
+                localStorage.removeItem('scottfree_aac_history');
+                renderHistory();
+            }
+        });
+
+        // Slider value labels
+        rateSlider.addEventListener('input', (e) => rateVal.textContent = `${e.target.value}x`);
+        pitchSlider.addEventListener('input', (e) => pitchVal.textContent = parseFloat(e.target.value).toFixed(1));
+
+        // App Entry Point
+        window.onload = function() {
+            loadHistory();
+            parseQueryFromURL();
+
+            // Listen to browser forward/back buttons for parameter changes
+            window.addEventListener('popstate', parseQueryFromURL);
+        };
+    </script>
+</body>
+</html>
